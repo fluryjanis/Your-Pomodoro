@@ -1,0 +1,21 @@
+name: 'Dependency Compliance Scan'
+on: 
+  pull_request:
+  workflow_dispatch: # Allows manual runs
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v6
+
+      - name: 'Scan for License Violations'
+        uses: actions/dependency-review-action@v5
+        with:
+          # If a PR exists, use its branches. If run manually, compare the current branch against main.
+          base-ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          head-ref: ${{ github.event.pull_request.head.sha || github.ref }}
