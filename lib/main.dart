@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,8 +45,13 @@ class TomatoPage extends StatefulWidget {
 class _TomatoPageState extends State<TomatoPage> {
   static const String _workSoundKey = 'work_sound_path';
   static const String _breakSoundKey = 'break_sound_path';
-  final TextEditingController _workController = TextEditingController(text: "25:00");
-  final TextEditingController _breakController = TextEditingController(text: "05:00");
+  static const String _defaultSoundAsset =
+      'Bell(By_freesound_community from Pixabay).mp3';
+
+  final TextEditingController _workController =
+      TextEditingController(text: "25:00");
+  final TextEditingController _breakController =
+      TextEditingController(text: "05:00");
   final FocusNode _workFocusNode = FocusNode();
   final FocusNode _breakFocusNode = FocusNode();
 
@@ -58,7 +64,7 @@ class _TomatoPageState extends State<TomatoPage> {
   int _completedTomatoes = 0;
   int _totalFocusedMinutes = 0;
   bool _notificationsEnabled = true;
-  bool _inAppSoundEnabled = false;
+  bool _inAppSoundEnabled = true; // In-app sound is enabled by default
   String? _workSoundPath;
   String? _breakSoundPath;
   final AudioPlayer _workSoundPlayer = AudioPlayer();
@@ -90,7 +96,10 @@ class _TomatoPageState extends State<TomatoPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Tomato Timer", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Tomato Timer",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.red,
         foregroundColor: Colors.white,
@@ -104,9 +113,12 @@ class _TomatoPageState extends State<TomatoPage> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Fixed line: using Theme.of(context).platform instead of defaultTargetPlatform
-          final isCompact = constraints.maxWidth < 980 || Theme.of(context).platform == TargetPlatform.android;
-          return isCompact ? _buildCompactLayout(phaseLabel) : _buildWideLayout(phaseLabel);
+          final isCompact =
+              constraints.maxWidth < 980 ||
+              Theme.of(context).platform == TargetPlatform.android;
+          return isCompact
+              ? _buildCompactLayout(phaseLabel)
+              : _buildWideLayout(phaseLabel);
         },
       ),
     );
@@ -128,7 +140,8 @@ class _TomatoPageState extends State<TomatoPage> {
               onIncrement: () => _adjustPhaseDuration('Work', 1),
               onDecrement: () => _adjustPhaseDuration('Work', -1),
               focusNode: _workFocusNode,
-              onEdit: () => _highlightTimeField(_workController, _workFocusNode),
+              onEdit: () =>
+                  _highlightTimeField(_workController, _workFocusNode),
             ),
             const SizedBox(height: 12),
             _timeBox(
@@ -139,7 +152,8 @@ class _TomatoPageState extends State<TomatoPage> {
               onIncrement: () => _adjustPhaseDuration('Break', 1),
               onDecrement: () => _adjustPhaseDuration('Break', -1),
               focusNode: _breakFocusNode,
-              onEdit: () => _highlightTimeField(_breakController, _breakFocusNode),
+              onEdit: () =>
+                  _highlightTimeField(_breakController, _breakFocusNode),
             ),
             const SizedBox(height: 12),
             _compactSummaryCard(),
@@ -163,7 +177,10 @@ class _TomatoPageState extends State<TomatoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Work / Break Sounds', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Work / Break Sounds',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
                   _soundDropCard(
                     label: 'Work notification',
@@ -201,22 +218,32 @@ class _TomatoPageState extends State<TomatoPage> {
                     },
                   ),
                   const SizedBox(height: 18),
-                  const Text('Quick notes', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Quick notes',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('• Use the arrow buttons to change each timer quickly.\n• Tap Edit to highlight the current time text for quick updates.'),
+                  const Text(
+                    '• Use the arrow buttons to change each timer quickly.\n• Tap Edit to highlight the current time text for quick updates.',
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Enable notifications'),
                     value: _notificationsEnabled,
-                    onChanged: (value) => setState(() => _notificationsEnabled = value),
+                    onChanged: (value) =>
+                        setState(() => _notificationsEnabled = value),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('In-app sound'),
                     value: _inAppSoundEnabled,
-                    onChanged: (value) => setState(() => _inAppSoundEnabled = value),
+                    onChanged: (value) =>
+                        setState(() => _inAppSoundEnabled = value),
                   ),
                 ],
               ),
@@ -238,7 +265,8 @@ class _TomatoPageState extends State<TomatoPage> {
                     onIncrement: () => _adjustPhaseDuration('Work', 1),
                     onDecrement: () => _adjustPhaseDuration('Work', -1),
                     focusNode: _workFocusNode,
-                    onEdit: () => _highlightTimeField(_workController, _workFocusNode),
+                    onEdit: () =>
+                        _highlightTimeField(_workController, _workFocusNode),
                   ),
                   const SizedBox(height: 24),
                   Expanded(
@@ -253,21 +281,32 @@ class _TomatoPageState extends State<TomatoPage> {
                           'assets/tomato(By_AomAm).png',
                           width: 200,
                           height: 200,
-                          errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox(),
                         ),
                         Positioned(
                           bottom: 20,
                           child: ElevatedButton.icon(
                             onPressed: _toggleLoop,
-                            icon: Icon(_isRunning ? Icons.stop : Icons.play_arrow),
-                            label: Text(_isRunning ? 'Stop $phaseLabel' : 'Start'),
+                            icon: Icon(
+                              _isRunning ? Icons.stop : Icons.play_arrow,
+                            ),
+                            label: Text(
+                              _isRunning ? 'Stop $phaseLabel' : 'Start',
+                            ),
                             style: ElevatedButton.styleFrom(
                               shape: const StadiumBorder(),
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.red.shade800,
-                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22,
+                                vertical: 14,
+                              ),
                               elevation: 4,
-                              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
                             ),
                           ),
                         ),
@@ -283,7 +322,8 @@ class _TomatoPageState extends State<TomatoPage> {
                     onIncrement: () => _adjustPhaseDuration('Break', 1),
                     onDecrement: () => _adjustPhaseDuration('Break', -1),
                     focusNode: _breakFocusNode,
-                    onEdit: () => _highlightTimeField(_breakController, _breakFocusNode),
+                    onEdit: () =>
+                        _highlightTimeField(_breakController, _breakFocusNode),
                   ),
                 ],
               ),
@@ -299,15 +339,31 @@ class _TomatoPageState extends State<TomatoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Stats', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Stats',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
-                  _statusCard('Tomatoes completed', '$_completedTomatoes', Icons.eco_outlined),
+                  _statusCard(
+                    'Tomatoes completed',
+                    '$_completedTomatoes',
+                    Icons.eco_outlined,
+                  ),
                   const SizedBox(height: 10),
-                  _statusCard('Focused hours', _formatHours(_totalFocusedMinutes), Icons.access_time),
+                  _statusCard(
+                    'Focused hours',
+                    _formatHours(_totalFocusedMinutes),
+                    Icons.access_time,
+                  ),
                   const SizedBox(height: 18),
-                  const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Progress',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Each finished work block adds 1 tomato and counts toward your total focused time.'),
+                  const Text(
+                    'Each finished work block adds 1 tomato and counts toward your total focused time.',
+                  ),
                 ],
               ),
             ),
@@ -330,14 +386,30 @@ class _TomatoPageState extends State<TomatoPage> {
         child: ExpansionTile(
           initiallyExpanded: false,
           leading: Icon(Icons.insights, color: Colors.red.shade700),
-          title: const Text('Your Stats', style: TextStyle(fontWeight: FontWeight.bold)),
-          childrenPadding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
+          title: const Text(
+            'Your Stats',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          childrenPadding:
+              const EdgeInsets.only(left: 14, right: 14, bottom: 14),
           children: [
             Row(
               children: [
-                Expanded(child: _statusCard('Tomatoes', '$_completedTomatoes', Icons.eco_outlined)),
+                Expanded(
+                  child: _statusCard(
+                    'Tomatoes',
+                    '$_completedTomatoes',
+                    Icons.eco_outlined,
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: _statusCard('Focused', _formatHours(_totalFocusedMinutes), Icons.access_time)),
+                Expanded(
+                  child: _statusCard(
+                    'Focused',
+                    _formatHours(_totalFocusedMinutes),
+                    Icons.access_time,
+                  ),
+                ),
               ],
             ),
           ],
@@ -357,7 +429,10 @@ class _TomatoPageState extends State<TomatoPage> {
       ),
       child: Column(
         children: [
-          Text('Current phase: $phaseLabel', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            'Current phase: $phaseLabel',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 10),
           Stack(
             alignment: Alignment.center,
@@ -367,7 +442,8 @@ class _TomatoPageState extends State<TomatoPage> {
                 'assets/tomato(By_AomAm).png',
                 width: 110,
                 height: 110,
-                errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox(),
               ),
             ],
           ),
@@ -401,17 +477,29 @@ class _TomatoPageState extends State<TomatoPage> {
         child: ExpansionTile(
           initiallyExpanded: false,
           leading: Icon(Icons.settings, color: Colors.red.shade700),
-          title: const Text('Settings & Notes', style: TextStyle(fontWeight: FontWeight.bold)),
-          childrenPadding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
+          title: const Text(
+            'Settings & Notes',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          childrenPadding:
+              const EdgeInsets.only(left: 14, right: 14, bottom: 14),
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Quick notes', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Quick notes',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
-                const Text('• Use the arrow buttons to change each timer quickly.\n• Tap Edit to highlight the current time text for quick updates.'),
+                const Text(
+                  '• Use the arrow buttons to change each timer quickly.\n• Tap Edit to highlight the current time text for quick updates.',
+                ),
                 const SizedBox(height: 12),
-                const Text('Work / Break Sounds', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Work / Break Sounds',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 _soundDropCard(
                   label: 'Work notification',
@@ -453,13 +541,15 @@ class _TomatoPageState extends State<TomatoPage> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Enable notifications'),
                   value: _notificationsEnabled,
-                  onChanged: (value) => setState(() => _notificationsEnabled = value),
+                  onChanged: (value) =>
+                      setState(() => _notificationsEnabled = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('In-app sound'),
                   value: _inAppSoundEnabled,
-                  onChanged: (value) => setState(() => _inAppSoundEnabled = value),
+                  onChanged: (value) =>
+                      setState(() => _inAppSoundEnabled = value),
                 ),
               ],
             ),
@@ -475,7 +565,8 @@ class _TomatoPageState extends State<TomatoPage> {
       builder: (context) => AlertDialog(
         title: const Text('Credits'),
         content: const Text(
-          'Icon asset: assets/tomato(By_AomAm).ico made by [AomAm] from www.flaticon.com',
+          '• Icon asset: assets/tomato(By_AomAm).ico made by [AomAm] from www.flaticon.com\n'
+          '• Audio asset: Bell(By_freesound_community from Pixabay).mp3 from Pixabay',
         ),
         actions: [
           TextButton(
@@ -607,7 +698,12 @@ class _TomatoPageState extends State<TomatoPage> {
         _workOriginalText = _formatDuration(updated);
         _workController.text = _workOriginalText;
         if (_isRunning && _isWorkPhase) {
-          _remaining = Duration(seconds: (_remaining.inSeconds + minutesDelta * 60).clamp(1, updated.inSeconds));
+          _remaining = Duration(
+            seconds: (_remaining.inSeconds + minutesDelta * 60).clamp(
+              1,
+              updated.inSeconds,
+            ),
+          );
           _updateActiveController();
         }
       } else {
@@ -617,7 +713,12 @@ class _TomatoPageState extends State<TomatoPage> {
         _breakOriginalText = _formatDuration(updated);
         _breakController.text = _breakOriginalText;
         if (_isRunning && !_isWorkPhase) {
-          _remaining = Duration(seconds: (_remaining.inSeconds + minutesDelta * 60).clamp(1, updated.inSeconds));
+          _remaining = Duration(
+            seconds: (_remaining.inSeconds + minutesDelta * 60).clamp(
+              1,
+              updated.inSeconds,
+            ),
+          );
           _updateActiveController();
         }
       }
@@ -692,21 +793,29 @@ class _TomatoPageState extends State<TomatoPage> {
 
     try {
       await player.stop();
-      if (customPath != null && customPath.isNotEmpty) {
+
+      // 1. Play custom picked sound if on native platform
+      if (!kIsWeb && customPath != null && customPath.isNotEmpty) {
         await player.play(DeviceFileSource(customPath));
         return;
       }
-      await SystemSound.play(SystemSoundType.alert);
-    } catch (_) {
+
+      // 2. Play bundled default audio asset (Works on Web, Desktop, Mobile)
+      await player.play(AssetSource(_defaultSoundAsset));
+    } catch (e) {
+      debugPrint("Asset audio error, trying fallback: $e");
       try {
-        await SystemSound.play(SystemSoundType.alert);
-      } catch (_) {
-        // Ignore sound playback failures on unsupported platforms.
-      }
+        if (!kIsWeb) {
+          await SystemSound.play(SystemSoundType.alert);
+        }
+      } catch (_) {}
     }
   }
 
-  void _highlightTimeField(TextEditingController controller, FocusNode focusNode) {
+  void _highlightTimeField(
+    TextEditingController controller,
+    FocusNode focusNode,
+  ) {
     focusNode.requestFocus();
     controller.selection = TextSelection(
       baseOffset: 0,
@@ -732,8 +841,17 @@ class _TomatoPageState extends State<TomatoPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -764,14 +882,19 @@ class _TomatoPageState extends State<TomatoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             Text(
               currentPath?.isNotEmpty == true
                   ? 'Using: ${currentPath!.split(Platform.pathSeparator).last}'
-                  : 'Sound here',
+                  : 'Default Bell Sound',
               style: TextStyle(
-                color: currentPath?.isNotEmpty == true ? Colors.red.shade800 : Colors.black54,
+                color: currentPath?.isNotEmpty == true
+                    ? Colors.red.shade800
+                    : Colors.black54,
                 fontSize: 13,
               ),
               softWrap: true,
@@ -793,7 +916,7 @@ class _TomatoPageState extends State<TomatoPage> {
                   child: IconButton(
                     onPressed: onReset,
                     icon: const Icon(Icons.refresh),
-                    tooltip: 'Reset sound',
+                    tooltip: 'Reset to default sound',
                   ),
                 ),
               ],
@@ -850,7 +973,8 @@ class _TomatoPageState extends State<TomatoPage> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: isActive ? Colors.red.shade900 : Colors.grey.shade800,
+                  color:
+                      isActive ? Colors.red.shade900 : Colors.grey.shade800,
                 ),
               ),
               IconButton(

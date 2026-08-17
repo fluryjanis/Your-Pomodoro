@@ -38,6 +38,7 @@ flutter:
     - assets/logo.ico
     - assets/tomato(By_AomAm).png
     - assets/tomato(By_AomAm).ico
+    - assets/Bell(By_freesound_community from Pixabay).mp3
 
 flutter_launcher_icons:
   android: "launcher_icon"
