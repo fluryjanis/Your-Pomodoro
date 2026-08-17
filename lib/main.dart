@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -43,8 +46,10 @@ class TomatoPage extends StatefulWidget {
 }
 
 class _TomatoPageState extends State<TomatoPage> {
-  static const String _workSoundKey = 'work_sound_path';
-  static const String _breakSoundKey = 'break_sound_path';
+  static const String _workSoundNameKey = 'work_sound_name';
+  static const String _breakSoundNameKey = 'break_sound_name';
+  static const String _workSoundDataKey = 'work_sound_data';
+  static const String _breakSoundDataKey = 'break_sound_data';
   static const String _defaultSoundAsset =
       'Bell(By_freesound_community from Pixabay).mp3';
 
@@ -64,9 +69,16 @@ class _TomatoPageState extends State<TomatoPage> {
   int _completedTomatoes = 0;
   int _totalFocusedMinutes = 0;
   bool _notificationsEnabled = true;
-  bool _inAppSoundEnabled = true; // In-app sound is enabled by default
+  bool _inAppSoundEnabled = true;
+
+  // Custom sound state (supporting Web Bytes and Desktop Paths)
+  String? _workSoundName;
+  String? _breakSoundName;
+  Uint8List? _workSoundBytes;
+  Uint8List? _breakSoundBytes;
   String? _workSoundPath;
   String? _breakSoundPath;
+
   final AudioPlayer _workSoundPlayer = AudioPlayer();
   final AudioPlayer _breakSoundPlayer = AudioPlayer();
   String _workOriginalText = "25:00";
@@ -184,37 +196,35 @@ class _TomatoPageState extends State<TomatoPage> {
                   const SizedBox(height: 12),
                   _soundDropCard(
                     label: 'Work notification',
-                    currentPath: _workSoundPath,
+                    soundName: _workSoundName,
                     onPick: () => _pickSoundFile(isWork: true),
-                    onDrop: (paths) async {
-                      final nextPath = paths.isNotEmpty ? paths.first : null;
-                      setState(() => _workSoundPath = nextPath);
-                      await _saveSoundPaths();
-                    },
+                    onDropFiles: (files) => _handleDroppedFiles(files, isWork: true),
                     onReset: () async {
                       await _workSoundPlayer.stop();
-                      await _breakSoundPlayer.stop();
                       if (!mounted) return;
-                      setState(() => _workSoundPath = null);
-                      await _saveSoundPaths();
+                      setState(() {
+                        _workSoundName = null;
+                        _workSoundBytes = null;
+                        _workSoundPath = null;
+                      });
+                      await _saveSoundData(isWork: true);
                     },
                   ),
                   const SizedBox(height: 12),
                   _soundDropCard(
                     label: 'Break notification',
-                    currentPath: _breakSoundPath,
+                    soundName: _breakSoundName,
                     onPick: () => _pickSoundFile(isWork: false),
-                    onDrop: (paths) async {
-                      final nextPath = paths.isNotEmpty ? paths.first : null;
-                      setState(() => _breakSoundPath = nextPath);
-                      await _saveSoundPaths();
-                    },
+                    onDropFiles: (files) => _handleDroppedFiles(files, isWork: false),
                     onReset: () async {
-                      await _workSoundPlayer.stop();
                       await _breakSoundPlayer.stop();
                       if (!mounted) return;
-                      setState(() => _breakSoundPath = null);
-                      await _saveSoundPaths();
+                      setState(() {
+                        _breakSoundName = null;
+                        _breakSoundBytes = null;
+                        _breakSoundPath = null;
+                      });
+                      await _saveSoundData(isWork: false);
                     },
                   ),
                   const SizedBox(height: 18),
@@ -503,37 +513,35 @@ class _TomatoPageState extends State<TomatoPage> {
                 const SizedBox(height: 8),
                 _soundDropCard(
                   label: 'Work notification',
-                  currentPath: _workSoundPath,
+                  soundName: _workSoundName,
                   onPick: () => _pickSoundFile(isWork: true),
-                  onDrop: (paths) async {
-                    final nextPath = paths.isNotEmpty ? paths.first : null;
-                    setState(() => _workSoundPath = nextPath);
-                    await _saveSoundPaths();
-                  },
+                  onDropFiles: (files) => _handleDroppedFiles(files, isWork: true),
                   onReset: () async {
                     await _workSoundPlayer.stop();
-                    await _breakSoundPlayer.stop();
                     if (!mounted) return;
-                    setState(() => _workSoundPath = null);
-                    await _saveSoundPaths();
+                    setState(() {
+                      _workSoundName = null;
+                      _workSoundBytes = null;
+                      _workSoundPath = null;
+                    });
+                    await _saveSoundData(isWork: true);
                   },
                 ),
                 const SizedBox(height: 10),
                 _soundDropCard(
                   label: 'Break notification',
-                  currentPath: _breakSoundPath,
+                  soundName: _breakSoundName,
                   onPick: () => _pickSoundFile(isWork: false),
-                  onDrop: (paths) async {
-                    final nextPath = paths.isNotEmpty ? paths.first : null;
-                    setState(() => _breakSoundPath = nextPath);
-                    await _saveSoundPaths();
-                  },
+                  onDropFiles: (files) => _handleDroppedFiles(files, isWork: false),
                   onReset: () async {
-                    await _workSoundPlayer.stop();
                     await _breakSoundPlayer.stop();
                     if (!mounted) return;
-                    setState(() => _breakSoundPath = null);
-                    await _saveSoundPaths();
+                    setState(() {
+                      _breakSoundName = null;
+                      _breakSoundBytes = null;
+                      _breakSoundPath = null;
+                    });
+                    await _saveSoundData(isWork: false);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -542,14 +550,14 @@ class _TomatoPageState extends State<TomatoPage> {
                   title: const Text('Enable notifications'),
                   value: _notificationsEnabled,
                   onChanged: (value) =>
-                      setState(() => _notificationsEnabled = value),
+                        setState(() => _notificationsEnabled = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('In-app sound'),
                   value: _inAppSoundEnabled,
                   onChanged: (value) =>
-                      setState(() => _inAppSoundEnabled = value),
+                        setState(() => _inAppSoundEnabled = value),
                 ),
               ],
             ),
@@ -751,59 +759,258 @@ class _TomatoPageState extends State<TomatoPage> {
     return hours >= 10 ? hours.toStringAsFixed(0) : hours.toStringAsFixed(1);
   }
 
+  // --- Audio File Handling with Drag-and-Drop & Pick Fallback ---
+
   Future<void> _pickSoundFile({required bool isWork}) async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.audio);
-      if (result != null && result.files.single.path != null) {
-        final path = result.files.single.path!;
+      final result = await FilePicker.platform.pickFiles(
+        type: kIsWeb ? FileType.any : FileType.custom,
+        allowedExtensions: kIsWeb
+            ? null
+            : [
+                'mp3',
+                'wav',
+                'ogg',
+                'm4a',
+                'aac',
+                'flac',
+                'opus',
+                'webm',
+              ],
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        final fileName = file.name;
+
+        // Perform safe audio extension check in Dart
+        final lower = fileName.toLowerCase();
+        final isAudio = lower.endsWith('.mp3') ||
+            lower.endsWith('.wav') ||
+            lower.endsWith('.ogg') ||
+            lower.endsWith('.m4a') ||
+            lower.endsWith('.aac') ||
+            lower.endsWith('.flac') ||
+            lower.endsWith('.opus') ||
+            lower.endsWith('.webm');
+
+        if (!isAudio) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Please select a supported audio file (.mp3, .wav, .ogg, etc.)',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+
+        final bytes = file.bytes;
+        final path = file.path;
+
         setState(() {
           if (isWork) {
+            _workSoundName = fileName;
+            _workSoundBytes = bytes;
             _workSoundPath = path;
           } else {
+            _breakSoundName = fileName;
+            _breakSoundBytes = bytes;
             _breakSoundPath = path;
           }
         });
-        await _saveSoundPaths();
+
+        await _saveSoundData(isWork: isWork);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Custom sound loaded: $fileName'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // User closed the dialog or browser returned null
+        if (mounted && kIsWeb) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Tip: You can also drag and drop your audio file directly into the box!',
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("File picker error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'File dialog error. Please drag and drop your audio file into the box!',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDroppedFiles(List<XFile> files, {required bool isWork}) async {
+    if (files.isEmpty) return;
+    try {
+      final file = files.first;
+      final fileName = file.name;
+
+      final lower = fileName.toLowerCase();
+      final isAudio = lower.endsWith('.mp3') ||
+          lower.endsWith('.wav') ||
+          lower.endsWith('.ogg') ||
+          lower.endsWith('.m4a') ||
+          lower.endsWith('.aac') ||
+          lower.endsWith('.flac') ||
+          lower.endsWith('.opus') ||
+          lower.endsWith('.webm');
+
+      if (!isAudio) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please drop an audio file (.mp3, .wav, .ogg, etc.)'),
+            ),
+          );
+        }
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+
+      setState(() {
+        if (isWork) {
+          _workSoundName = fileName;
+          _workSoundBytes = bytes;
+          _workSoundPath = kIsWeb ? null : file.path;
+        } else {
+          _breakSoundName = fileName;
+          _breakSoundBytes = bytes;
+          _breakSoundPath = kIsWeb ? null : file.path;
+        }
+      });
+
+      await _saveSoundData(isWork: isWork);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Custom sound loaded: $fileName'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Drop file error: $e");
+    }
   }
 
   Future<void> _loadSavedSounds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
+
+      final workName = prefs.getString(_workSoundNameKey);
+      final breakName = prefs.getString(_breakSoundNameKey);
+      final workData = prefs.getString(_workSoundDataKey);
+      final breakData = prefs.getString(_breakSoundDataKey);
+
       setState(() {
-        _workSoundPath = prefs.getString(_workSoundKey);
-        _breakSoundPath = prefs.getString(_breakSoundKey);
+        _workSoundName = workName;
+        _breakSoundName = breakName;
+
+        if (workData != null && workData.isNotEmpty) {
+          if (workData.startsWith('/') || workData.contains(':\\')) {
+            _workSoundPath = workData;
+          } else {
+            _workSoundBytes = base64Decode(workData);
+          }
+        }
+
+        if (breakData != null && breakData.isNotEmpty) {
+          if (breakData.startsWith('/') || breakData.contains(':\\')) {
+            _breakSoundPath = breakData;
+          } else {
+            _breakSoundBytes = base64Decode(breakData);
+          }
+        }
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Load sound preferences error: $e");
+    }
   }
 
-  Future<void> _saveSoundPaths() async {
+  Future<void> _saveSoundData({required bool isWork}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_workSoundKey, _workSoundPath ?? '');
-      await prefs.setString(_breakSoundKey, _breakSoundPath ?? '');
-    } catch (_) {}
+      final nameKey = isWork ? _workSoundNameKey : _breakSoundNameKey;
+      final dataKey = isWork ? _workSoundDataKey : _breakSoundDataKey;
+      final name = isWork ? _workSoundName : _breakSoundName;
+      final bytes = isWork ? _workSoundBytes : _breakSoundBytes;
+      final path = isWork ? _workSoundPath : _breakSoundPath;
+
+      if (name == null) {
+        await prefs.remove(nameKey);
+        await prefs.remove(dataKey);
+        return;
+      }
+
+      await prefs.setString(nameKey, name);
+
+      if (kIsWeb && bytes != null) {
+        if (bytes.lengthInBytes <= 3500000) {
+          await prefs.setString(dataKey, base64Encode(bytes));
+        }
+      } else if (path != null) {
+        await prefs.setString(dataKey, path);
+      } else if (bytes != null) {
+        if (bytes.lengthInBytes <= 3500000) {
+          await prefs.setString(dataKey, base64Encode(bytes));
+        }
+      }
+    } catch (e) {
+      debugPrint("Save sound preferences error: $e");
+    }
   }
 
   Future<void> _playPhaseSound(bool isWorkPhase) async {
     final player = isWorkPhase ? _workSoundPlayer : _breakSoundPlayer;
-    final customPath = isWorkPhase ? _workSoundPath : _breakSoundPath;
+    final bytes = isWorkPhase ? _workSoundBytes : _breakSoundBytes;
+    final path = isWorkPhase ? _workSoundPath : _breakSoundPath;
 
     try {
       await player.stop();
 
-      // 1. Play custom picked sound if on native platform
-      if (!kIsWeb && customPath != null && customPath.isNotEmpty) {
-        await player.play(DeviceFileSource(customPath));
+      // 1. Play in-memory bytes (Works on Web & Mobile/Desktop)
+      if (bytes != null && bytes.isNotEmpty) {
+        final uri = Uri.dataFromBytes(bytes, mimeType: 'audio/mpeg').toString();
+        await player.play(UrlSource(uri));
         return;
       }
 
-      // 2. Play bundled default audio asset (Works on Web, Desktop, Mobile)
+      // 2. Play from local device file (Desktop/Native)
+      if (!kIsWeb && path != null && path.isNotEmpty) {
+        await player.play(DeviceFileSource(path));
+        return;
+      }
+
+      // 3. Fallback to default asset
       await player.play(AssetSource(_defaultSoundAsset));
     } catch (e) {
-      debugPrint("Asset audio error, trying fallback: $e");
+      debugPrint("Audio playback error: $e");
       try {
         if (!kIsWeb) {
           await SystemSound.play(SystemSoundType.alert);
@@ -862,15 +1069,13 @@ class _TomatoPageState extends State<TomatoPage> {
 
   Widget _soundDropCard({
     required String label,
-    required String? currentPath,
+    required String? soundName,
     required VoidCallback onPick,
-    required ValueChanged<List<String>> onDrop,
+    required ValueChanged<List<XFile>> onDropFiles,
     required VoidCallback onReset,
   }) {
     return DropTarget(
-      onDragDone: (details) => onDrop(
-        details.files.map((file) => file.path).whereType<String>().toList(),
-      ),
+      onDragDone: (details) => onDropFiles(details.files),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -888,11 +1093,11 @@ class _TomatoPageState extends State<TomatoPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              currentPath?.isNotEmpty == true
-                  ? 'Using: ${currentPath!.split(Platform.pathSeparator).last}'
-                  : 'Default Bell Sound',
+              soundName?.isNotEmpty == true
+                  ? 'Using: $soundName'
+                  : 'Click "Sound" or drag & drop audio here',
               style: TextStyle(
-                color: currentPath?.isNotEmpty == true
+                color: soundName?.isNotEmpty == true
                     ? Colors.red.shade800
                     : Colors.black54,
                 fontSize: 13,
